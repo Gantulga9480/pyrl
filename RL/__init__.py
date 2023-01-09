@@ -1,1 +1,2 @@
-from .RL import Agent, QLAgent
+from .agent import Agent
+from .q_learning import QLAgent
