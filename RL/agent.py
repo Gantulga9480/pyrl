@@ -1,14 +1,15 @@
 class Agent:
 
-    def __init__(self, lr: float, y: float) -> None:
-        self.model = None
+    def __init__(self, action_space: list, lr: float, y: float) -> None:
+        self.action_space = action_space
         self.lr = lr
         self.y = y
         self.e = 1
         self.e_min = 0.01
+        self.e_decay = 0.999999
+        self.model = None
         self.train = True
-        self.reward_history = {'step': [],
-                               'epis': []}
+        self.reward_history = {'step_reward': [], 'episode_reward': []}
         self.step_count = 0
         self.episode_count = 0
 

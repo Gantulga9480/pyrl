@@ -5,13 +5,11 @@ from .agent import Agent
 
 class QLAgent(Agent):
 
-    def __init__(self, lr: float = 0.01, y: float = 0.99) -> None:
-        super().__init__(lr, y)
-        self.__action_space_size = 0
+    def __init__(self, action_space: list, lr: float = 0.01, y: float = 0.99) -> None:
+        super().__init__(action_space, lr, y)
 
     def create_model(self, dim: tuple) -> None:
         self.model = np.zeros(dim)
-        self.__action_space_size = dim[-1]
 
     def save_model(self, path) -> None:
         np.save(path, self.model)
@@ -37,7 +35,7 @@ class QLAgent(Agent):
     def policy(self, state, greedy=False):
         self.step_count += 1
         if not greedy and np.random.random() < self.e:
-            return np.random.randint(0, self.__action_space_size)
+            return np.random.choice(self.action_space)
         return np.argmax(self.model[state])
 
     def plot(self):
