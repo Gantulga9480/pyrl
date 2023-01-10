@@ -11,8 +11,8 @@ from .utils import ReplayBuffer, DoubleReplayBuffer
 
 class DQN(Agent):
 
-    def __init__(self, action_space, lr: float, y: float) -> None:
-        super().__init__(action_space, lr, y)
+    def __init__(self, action_space: list, lr: float, y: float, e_decay: float = 0.99999) -> None:
+        super().__init__(action_space, lr, y, e_decay)
         self.target_model = None
         self.buffer = None
         self.batchs = 0
