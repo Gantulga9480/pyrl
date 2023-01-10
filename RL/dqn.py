@@ -12,7 +12,7 @@ from .agent import Agent
 
 class DQN(Agent):
 
-    def __init__(self, lr: float, y: float, batchs: int, epochs: int, gpu: bool = True, path: str = None) -> None:
+    def __init__(self, lr: float, y: float, batchs: int, epochs: int, gpu: bool = True) -> None:
         super().__init__(lr, y)
         self.batchs = batchs
         self.epochs = epochs
@@ -31,8 +31,6 @@ class DQN(Agent):
                     print(e)
         else:
             os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-        if path:
-            self.load_model(path)
 
     def create_model(self, sizes: list) -> Sequential:
         self.model = Sequential()
