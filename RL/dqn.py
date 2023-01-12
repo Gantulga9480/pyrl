@@ -92,7 +92,7 @@ class DQN(Agent):
             return np.random.choice(self.action_space)
         else:
             action_values = self.model.predict(np.expand_dims(state, axis=0))[0]
-            return np.argmax(action_values), action_values
+            return np.argmax(action_values)
 
     def learn(self, state, action, next_state, reward, episode_over):
         self.reward_history['step_reward'].append(reward)
