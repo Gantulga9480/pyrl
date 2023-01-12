@@ -5,8 +5,8 @@ from .agent import Agent
 
 class QLAgent(Agent):
 
-    def __init__(self, action_space: list, lr: float = 0.01, y: float = 0.99) -> None:
-        super().__init__(action_space, lr, y)
+    def __init__(self, action_space: list, lr: float, y: float, e_decay: float = 0.99999) -> None:
+        super().__init__(action_space, lr, y, e_decay)
 
     def create_model(self, dim: tuple) -> None:
         self.model = np.zeros(dim)
