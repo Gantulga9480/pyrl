@@ -18,7 +18,7 @@ class QLAgent(Agent):
         self.model = np.load(path)
 
     def learn(self, s: tuple, a: int, r: float, ns: tuple, d: bool) -> None:
-        self.reward_history['step'].append(r)
+        self.reward_history['step_reward'].append(r)
         if not d:
             max_future_q_value = np.max(self.model[ns])
             current_q_value = self.model[s][a]
@@ -27,9 +27,9 @@ class QLAgent(Agent):
             self.model[s][a] = new_q_value
         else:
             self.model[s][a] = r
-            avg = sum(self.reward_history['step'][-self.step_count:]) / self.step_count
-            self.reward_history['epis'].append(avg)
-            self.reward_history['step'].clear()
+            avg = sum(self.reward_history['step_reward'][-self.step_count:]) / self.step_count
+            self.reward_history['episode_reward'].append(avg)
+            self.reward_history['step_reward'].clear()
             self.episode_count += 1
 
     def policy(self, state, greedy=False):
@@ -39,5 +39,5 @@ class QLAgent(Agent):
         return np.argmax(self.model[state])
 
     def plot(self):
-        plt.plot(self.reward_history['epis'])
+        plt.plot(self.reward_history['episode_reward'])
         plt.show()
