@@ -61,6 +61,7 @@ class DQN(Agent):
             self.target_model.add(Dense(dim, activation='relu'))
         self.model.add(Dense(sizes[-1], activation='linear'))
         self.target_model.add(Dense(sizes[-1], activation='linear'))
+        self.update_target()
         self.model.compile(loss="mse",
                            optimizer=Adam(learning_rate=self.lr),
                            metrics=["accuracy"])
