@@ -13,9 +13,14 @@ class ReplayBuffer:
     def trainable(self):
         return self.buffer.__len__() >= self.min_size
 
-    def push(self, data):
+    def append(self, data):
         """Data format [state, action, next_state, reward, episode_over]"""
         self.buffer.append(data)
+
+    def extend(self, datas):
+        """Data format [[states], [actions], [next_states], [rewards], [episode_overs]]"""
+        data = list(zip(datas[0], datas[1], datas[2], datas[3], datas[4], ))
+        self.buffer.extend(data)
 
     def sample(self, sample_size):
         return random.sample(self.buffer, sample_size)
@@ -35,10 +40,13 @@ class DoubleReplayBuffer:
         fo = self.buffer_old.__len__() >= self.min_size
         return fn and fo
 
-    def push(self, data):
+    def append(self, data):
         if self.buffer_new.__len__() == self.max_size:
             self.buffer_old.append(self.buffer_new.popleft())
         self.buffer_new.append(data)
+
+    def extend(self, datas):
+        raise NotImplementedError
 
     def sample(self, sample_size, factor):
         n_size = round(sample_size * factor)
