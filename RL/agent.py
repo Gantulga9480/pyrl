@@ -28,5 +28,8 @@ class Agent:
     def policy(self, state, greedy=False):
         pass
 
-    def decay_epsilon(self, rate=0.999999):
-        self.e = max(self.e_min, self.e * rate)
+    def decay_epsilon(self, rate=None):
+        if rate:
+            self.e = max(self.e_min, self.e * rate)
+        else:
+            self.e = max(self.e_min, self.e * self.e_decay)
