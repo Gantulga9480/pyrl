@@ -9,7 +9,6 @@ class Agent:
         self.e_decay = e_decay
         self.model = None
         self.train = True
-        self.reward_history = {'step_reward': [], 'episode_reward': []}
         self.step_count = 0
         self.episode_count = 0
 
