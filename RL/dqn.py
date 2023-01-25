@@ -113,13 +113,10 @@ class DQN(Agent):
 
     def update_model(self, samples):
         if not self.batchs or not self.epochs:
-            print("Model not configured!, set batch size and epoch count")
-            return
+            raise AttributeError("Model not configured!, set batch size and epoch count")
         self.train_count += 1
         current_states = np.array([item[0] for item in samples])
         new_current_state = np.array([item[2] for item in samples])
-        current_qs_list = []
-        future_qs_list = []
         current_qs_list = self.model.predict(current_states)
         future_qs_list = self.target_model.predict(new_current_state)
 
