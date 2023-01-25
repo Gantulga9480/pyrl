@@ -19,7 +19,7 @@ class ReplayBuffer:
 
     def extend(self, datas):
         """Data format [[states], [actions], [next_states], [rewards], [episode_overs]]"""
-        data = list(zip(datas[0], datas[1], datas[2], datas[3], datas[4], ))
+        data = list(zip(datas[0], datas[1], datas[2], datas[3], datas[4]))
         self.buffer.extend(data)
 
     def sample(self, sample_size):
