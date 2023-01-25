@@ -85,14 +85,19 @@ class DQN(Agent):
             exit()
         self.model.summary()
 
-    def policy(self, state, greedy=False):
+    def policy(self, state, greedy=False, batch=False):
         """greedy - False (default) for training, True for inference"""
         self.step_count += 1
-        if not greedy and np.random.random() < self.e:
-            return np.random.choice(self.action_space)
+        if not batch:
+            if not greedy and np.random.random() < self.e:
+                return np.random.choice(self.action_space)
+            else:
+                return np.argmax(self.model.predict(np.expand_dims(state, axis=0))[0])
         else:
-            action_values = self.model.predict(np.expand_dims(state, axis=0))[0]
-            return np.argmax(action_values)
+            if not greedy and np.random.random() < self.e:
+                return [np.random.choice(self.action_space) for _ in range(len(state))]
+            else:
+                return list(np.argmax(self.model.predict(state), axis=1))
 
     def learn(self, state, action, next_state, reward, episode_over):
         self.reward_history['step_reward'].append(reward)
