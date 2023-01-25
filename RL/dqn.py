@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Dense, Input, Dropout
+from tensorflow.keras.layers import Dense, Input
 from tensorflow.keras.optimizers import Adam
 import numpy as np
 import os
@@ -46,7 +46,7 @@ class DQN(Agent):
         else:
             self.buffer = ReplayBuffer(max_size=max_size, min_size=min_size)
 
-    def create_model(self, sizes: list, batchs: int = 128, epochs: int = 1, train_freq: int = 10, update_freq: int = 10) -> Sequential:
+    def create_model(self, sizes: list, batchs: int = 64, epochs: int = 1, train_freq: int = 10, update_freq: int = 10) -> Sequential:
         """sizes - [state_size, hidden_state, action_size]"""
         self.batchs = batchs
         self.epochs = epochs
@@ -105,7 +105,7 @@ class DQN(Agent):
                 self.update_model(self.buffer.sample(self.batchs))
             elif self.train_count % self.update_freq == 0:
                 self.update_target()
-            self.decay_epsilon(self.e_decay)
+            self.decay_epsilon()
 
     def update_target(self):
         if self.model:
