@@ -104,7 +104,7 @@ class DQN(Agent):
     def learn(self, state, action, next_state, reward, episode_over):
         batch = len(np.array(state).shape) > 1
         if not batch:
-            self.buffer.push([state, action, next_state, reward, episode_over])
+            self.buffer.append([state, action, next_state, reward, episode_over])
         else:
             self.buffer.extend([state, action, next_state, reward, episode_over])
         if self.buffer.trainable and self.train:
