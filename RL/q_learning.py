@@ -16,7 +16,7 @@ class QLAgent(Agent):
     def load_model(self, path) -> None:
         self.model = np.load(path)
 
-    def learn(self, s: tuple, a: int, r: float, ns: tuple, d: bool) -> None:
+    def learn(self, s: tuple, a: int, ns: tuple, r: float, d: bool) -> None:
         if not d:
             max_future_q_value = np.max(self.model[ns])
             current_q_value = self.model[s][a]
