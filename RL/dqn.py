@@ -125,5 +125,5 @@ class DQNAgent(Agent):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        if self.train_count % 100:
+        if self.train_count % 100 == 0:
             print(f"Train: {self.train_count} - loss ---> ", loss.item())
