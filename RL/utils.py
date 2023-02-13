@@ -2,18 +2,38 @@ from collections import deque
 import random
 
 
-class ReplayBuffer:
+class ReplayBufferBase(object):
 
     def __init__(self, max_size, min_size) -> None:
         self.max_size = max_size
         self.min_size = min_size
+        self.buffer = None
+
+    @property
+    def trainable(self):
+        pass
+
+    def push(self, *args):
+        raise NotImplementedError
+
+    def extend(self, *args):
+        raise NotImplementedError
+
+    def sample(self, *args):
+        raise NotImplementedError
+
+
+class ReplayBuffer(ReplayBufferBase):
+
+    def __init__(self, max_size, min_size) -> None:
+        super().__init__(max_size, min_size)
         self.buffer = deque(maxlen=max_size)
 
     @property
     def trainable(self):
         return self.buffer.__len__() >= self.min_size
 
-    def append(self, data):
+    def push(self, data):
         """Data format [state, action, next_state, reward, episode_over]"""
         self.buffer.append(data)
 
@@ -26,11 +46,10 @@ class ReplayBuffer:
         return random.sample(self.buffer, sample_size)
 
 
-class DoubleReplayBuffer:
+class DoubleReplayBuffer(ReplayBufferBase):
 
     def __init__(self, max_size, min_size) -> None:
-        self.max_size = max_size
-        self.min_size = min_size
+        super().__init__(max_size, min_size)
         self.buffer_new = deque(maxlen=max_size)
         self.buffer_old = deque(maxlen=max_size * 4)
 
@@ -40,7 +59,7 @@ class DoubleReplayBuffer:
         fo = self.buffer_old.__len__() >= self.min_size
         return fn and fo
 
-    def append(self, data):
+    def push(self, data):
         if self.buffer_new.__len__() == self.max_size:
             self.buffer_old.append(self.buffer_new.popleft())
         self.buffer_new.append(data)
@@ -53,5 +72,5 @@ class DoubleReplayBuffer:
         o_size = sample_size - n_size
         sn = random.sample(self.buffer_new, n_size)
         so = random.sample(self.buffer_old, o_size)
-        so.extend(so)
+        sn.extend(so)
         return sn

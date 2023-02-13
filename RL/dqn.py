@@ -1,110 +1,88 @@
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import Dense, Input
-from tensorflow.keras.optimizers import Adam
+import torch
+from torch import nn
 import numpy as np
 import os
 from .agent import Agent
-from .utils import ReplayBuffer, DoubleReplayBuffer
+from .utils import ReplayBufferBase
 
 
-class DQN(Agent):
+class DQNAgent(Agent):
 
-    def __init__(self, action_space: list, lr: float, y: float, e_decay: float = 0.99999, gpu: bool = False) -> None:
-        super().__init__(action_space, lr, y, e_decay)
+    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, device: str = 'cpu') -> None:
+        super(DQNAgent, self).__init__(state_space_size, action_space_size, lr, y, e_decay)
         self.target_model = None
+        self.model = None
         self.buffer = None
         self.batchs = 0
         self.epochs = 0
-        self.gpu = gpu
-        self.train_freq = 10
-        self.update_freq = 10
+        self.device = device
+        self.train_freq = 0
+        self.update_freq = 0
         self.train_count = 0
-        if self.gpu:
-            gpus = tf.config.list_physical_devices('GPU')
-            if gpus:
-                try:
-                    # Currently, memory growth needs to be the same across GPUs
-                    for gpu in gpus:
-                        tf.config.experimental.set_memory_growth(gpu, True)
-                        tf.config.list_logical_devices('GPU')
-                except RuntimeError as e:
-                    # Memory growth must be set before GPUs have been initialized
-                    print(e)
-        else:
-            os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-    def create_buffer(self, max_size: int, min_size: int = 0, opt: int = 0):
-        """opt - [0] for single buffer, [1] for double buffer"""
-        if min_size == 0:
-            min_size = self.batchs
-        if opt == 0:
-            self.buffer = ReplayBuffer(max_size=max_size, min_size=min_size)
-        elif opt == 1:
-            self.buffer = DoubleReplayBuffer(max_size=max_size, min_size=min_size)
-        else:
-            self.buffer = ReplayBuffer(max_size=max_size, min_size=min_size)
+    def create_buffer(self, buffer: ReplayBufferBase):
+        if buffer.min_size == 0:
+            buffer.min_size = self.batchs
+        self.buffer = buffer
 
-    def create_model(self, sizes: list, batchs: int = 64, epochs: int = 1, train_freq: int = 10, update_freq: int = 10) -> Sequential:
-        """sizes - [state_size, hidden_state, action_size]"""
+    def create_model(self, model: torch.nn.Module, target: torch.nn.Module, batchs: int = 64, epochs: int = 1, train_freq: int = 10, update_freq: int = 10):
+        self.model = model
+        self.target_model = target
+        self.target_model.load_state_dict(self.model.state_dict())
+        self.model.to(self.device)
+        self.model.train()
+        self.target_model.to(self.device)
+        self.target_model.eval()
         self.batchs = batchs
         self.epochs = epochs
         self.train_freq = train_freq
         self.update_freq = update_freq
-        self.model = Sequential()
-        self.target_model = Sequential()
-        self.model.add(Input(shape=(sizes[0],)))
-        self.target_model.add(Input(shape=(sizes[0],)))
-        for dim in sizes[1:-1]:
-            self.model.add(Dense(dim, activation='relu'))
-            self.target_model.add(Dense(dim, activation='relu'))
-        self.model.add(Dense(sizes[-1], activation='linear'))
-        self.target_model.add(Dense(sizes[-1], activation='linear'))
-        self.update_target()
-        self.model.compile(loss="mse",
-                           optimizer=Adam(learning_rate=self.lr),
-                           metrics=["accuracy"])
-        self.model.summary()
+        self.loss_fn = nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
-    def save_model(self, path) -> None:
-        if not path.endswith('.h5'):
-            path += '.h5'
-        if self.model:
-            self.model.save(path)
+    def save_model(self, path: str) -> None:
+        if self.model and path:
+            try:
+                torch.save(self.model.state_dict(), path)
+            except Exception:
+                os.makedirs("/".join(path.split("/")[:-1]))
+                torch.save(self.model.state_dict(), path)
 
     def load_model(self, path) -> None:
         # TODO configure batch and epoch size
-        if not path.endswith('.h5'):
-            path += '.h5'
         try:
-            self.model = load_model(path)
-            self.target_model = load_model(path)
-        except IOError:
+            self.model.load_state_dict(torch.load(path))
+            self.target_model.load_state_dict(self.model.state_dict())
+            self.model.to(self.device)
+            self.model.train()
+            self.target_model.to(self.device)
+            self.target_model.eval()
+        except Exception:
             print('Model file not found!')
             exit()
-        self.model.summary()
 
+    @torch.no_grad()
     def policy(self, state, greedy=False):
         """greedy - False (default) for training, True for inference"""
         self.step_count += 1
-        state = np.array(state)
-        batch = len(state.shape) > 1
-        if not batch:
+        self.model.eval()
+        state = torch.Tensor(state).to(self.device)
+        is_batch = len(state.size()) > 1
+        if not is_batch:
             if not greedy and np.random.random() < self.e:
-                return np.random.choice(self.action_space)
+                return np.random.choice(list(range(self.action_space_size)))
             else:
-                return np.argmax(self.model.predict(np.expand_dims(state, axis=0))[0])
+                return torch.argmax(self.model(state)).item()
         else:
             if not greedy and np.random.random() < self.e:
-                return [np.random.choice(self.action_space) for _ in range(len(state))]
+                return [np.random.choice(list(range(self.action_space_size))) for _ in range(len(state))]
             else:
-                return list(np.argmax(self.model.predict(state), axis=1))
+                return torch.argmax(self.model(state), axis=1).tolist()
 
     def learn(self, state, action, next_state, reward, episode_over):
         batch = len(np.array(state).shape) > 1
         if not batch:
-            self.buffer.append([state, action, next_state, reward, episode_over])
+            self.buffer.push([state, action, next_state, reward, episode_over])
         else:
             self.buffer.extend([state, action, next_state, reward, episode_over])
         if self.buffer.trainable and self.train:
@@ -116,28 +94,36 @@ class DQN(Agent):
 
     def update_target(self):
         if self.model:
-            self.target_model.set_weights(self.model.get_weights())
+            self.target_model.load_state_dict(self.model.state_dict())
+        else:
+            print('Model not created!')
+            exit()
 
     def update_model(self, samples):
         if not self.batchs or not self.epochs:
             raise AttributeError("Model not configured!, set batch size and epoch count")
         self.train_count += 1
-        current_states = np.array([item[0] for item in samples])
-        new_current_state = np.array([item[2] for item in samples])
-        current_qs_list = self.model.predict(current_states)
-        future_qs_list = self.target_model.predict(new_current_state)
+        self.model.eval()
+        current_states = torch.Tensor([item[0] for item in samples]).to(self.device)
+        new_current_state = torch.Tensor([item[2] for item in samples]).to(self.device)
+        with torch.no_grad():
+            current_qs = self.model(current_states)
+            future_qs = self.target_model(new_current_state)
 
-        X = []
-        Y = []
-        for index, (state, action, _, reward, done) in enumerate(samples):
+        for index, (_, action, _, reward, done) in enumerate(samples):
             if not done:
-                new_q = reward + self.y * np.max(future_qs_list[index])
+                new_q = reward + self.y * torch.max(future_qs[index])
             else:
                 new_q = reward
 
-            current_qs = current_qs_list[index]
-            current_qs[action] = new_q
+            current_qs[index][action] = new_q
 
-            X.append(state)
-            Y.append(current_qs)
-        self.model.fit(np.array(X), np.array(Y), epochs=self.epochs, batch_size=self.batchs, shuffle=False, verbose=0)
+        self.model.train()
+
+        preds = self.model(current_states)
+        loss = self.loss_fn(preds, current_qs).to(self.device)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        if self.train_count % 100:
+            print(f"Train: {self.train_count} - loss ---> ", loss.item())

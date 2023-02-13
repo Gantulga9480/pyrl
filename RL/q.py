@@ -4,8 +4,9 @@ from .agent import Agent
 
 class QLAgent(Agent):
 
-    def __init__(self, action_space: list, lr: float, y: float, e_decay: float = 0.99999) -> None:
-        super().__init__(action_space, lr, y, e_decay)
+    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999) -> None:
+        super().__init__(state_space_size, action_space_size, lr, y, e_decay)
+        self.create_model((*self.state_space_size, self.action_space_size))
 
     def create_model(self, dim: tuple) -> None:
         self.model = np.zeros(dim)
@@ -24,11 +25,12 @@ class QLAgent(Agent):
                 (r + self.y * max_future_q_value - current_q_value)
             self.model[s][a] = new_q_value
         else:
-            self.model[s][a] = r
+            self.model[s][a] = r * self.y
             self.episode_count += 1
+        self.decay_epsilon()
 
     def policy(self, state, greedy=False):
         self.step_count += 1
         if not greedy and np.random.random() < self.e:
-            return np.random.choice(self.action_space)
+            return np.random.choice(self.action_space_size)
         return np.argmax(self.model[state])
