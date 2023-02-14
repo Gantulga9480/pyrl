@@ -8,13 +8,14 @@ from .utils import ReplayBufferBase
 
 class DQNAgent(Agent):
 
-    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, device: str = 'cpu') -> None:
+    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, device: str = 'cpu', seed: int = 1) -> None:
         super(DQNAgent, self).__init__(state_space_size, action_space_size, lr, y, e_decay)
+        torch.manual_seed(seed)
+        np.random.seed(seed)
         self.target_model = None
         self.model = None
         self.buffer = None
         self.batchs = 0
-        self.epochs = 0
         self.device = device
         self.train_freq = 0
         self.update_freq = 0
@@ -25,7 +26,7 @@ class DQNAgent(Agent):
             buffer.min_size = self.batchs
         self.buffer = buffer
 
-    def create_model(self, model: torch.nn.Module, target: torch.nn.Module, batchs: int = 64, epochs: int = 1, train_freq: int = 10, update_freq: int = 10):
+    def create_model(self, model: torch.nn.Module, target: torch.nn.Module, batchs: int = 64, train_freq: int = 10, update_freq: int = 10):
         self.model = model
         self.target_model = target
         self.target_model.load_state_dict(self.model.state_dict())
@@ -34,7 +35,6 @@ class DQNAgent(Agent):
         self.target_model.to(self.device)
         self.target_model.eval()
         self.batchs = batchs
-        self.epochs = epochs
         self.train_freq = train_freq
         self.update_freq = update_freq
         self.loss_fn = nn.MSELoss()
@@ -49,7 +49,6 @@ class DQNAgent(Agent):
                 torch.save(self.model.state_dict(), path)
 
     def load_model(self, path) -> None:
-        # TODO configure batch and epoch size
         try:
             self.model.load_state_dict(torch.load(path))
             self.target_model.load_state_dict(self.model.state_dict())
@@ -58,7 +57,7 @@ class DQNAgent(Agent):
             self.target_model.to(self.device)
             self.target_model.eval()
         except Exception:
-            print('Model file not found!')
+            print(f'{path} file not found!')
             exit()
 
     @torch.no_grad()
@@ -100,27 +99,25 @@ class DQNAgent(Agent):
             exit()
 
     def update_model(self, samples):
-        if not self.batchs or not self.epochs:
-            raise AttributeError("Model not configured!, set batch size and epoch count")
         self.train_count += 1
         self.model.eval()
-        current_states = torch.Tensor([item[0] for item in samples]).to(self.device)
-        new_current_state = torch.Tensor([item[2] for item in samples]).to(self.device)
+        states = torch.Tensor([item[0] for item in samples]).to(self.device)
+        next_states = torch.Tensor([item[2] for item in samples]).to(self.device)
         with torch.no_grad():
-            current_qs = self.model(current_states)
-            future_qs = self.target_model(new_current_state)
+            current_qs = self.model(states)
+            future_qs = self.target_model(next_states)
 
-        for index, (_, action, _, reward, done) in enumerate(samples):
-            if not done:
-                new_q = reward + self.y * torch.max(future_qs[index])
-            else:
-                new_q = reward
+            for index, (_, action, _, reward, done) in enumerate(samples):
+                if not done:
+                    new_q = reward + self.y * torch.max(future_qs[index])
+                else:
+                    new_q = reward
 
-            current_qs[index][action] = new_q
+                current_qs[index][action] = new_q
 
         self.model.train()
 
-        preds = self.model(current_states)
+        preds = self.model(states)
         loss = self.loss_fn(preds, current_qs).to(self.device)
         self.optimizer.zero_grad()
         loss.backward()
