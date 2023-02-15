@@ -17,8 +17,8 @@ class DQNAgent(Agent):
         self.buffer = None
         self.batchs = 0
         self.device = device
-        self.train_freq = 0
-        self.update_freq = 0
+        self.main_train_freq = 0
+        self.target_update_freq = 0
         self.train_count = 0
 
     def create_buffer(self, buffer: ReplayBufferBase):
@@ -26,17 +26,17 @@ class DQNAgent(Agent):
             buffer.min_size = self.batchs
         self.buffer = buffer
 
-    def create_model(self, model: torch.nn.Module, target: torch.nn.Module, batchs: int = 64, train_freq: int = 10, update_freq: int = 10):
-        self.model = model
-        self.target_model = target
+    def create_model(self, model: torch.nn.Module, batchs: int = 64, main_train_freq: int = 1, target_update_freq: int = 100):
+        self.model = model(self.state_space_size, self.action_space_size)
+        self.target_model = model(self.state_space_size, self.action_space_size)
         self.target_model.load_state_dict(self.model.state_dict())
         self.model.to(self.device)
         self.model.train()
         self.target_model.to(self.device)
         self.target_model.eval()
         self.batchs = batchs
-        self.train_freq = train_freq
-        self.update_freq = update_freq
+        self.main_train_freq = main_train_freq
+        self.target_update_freq = target_update_freq
         self.loss_fn = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
@@ -85,9 +85,9 @@ class DQNAgent(Agent):
         else:
             self.buffer.extend([state, action, next_state, reward, episode_over])
         if self.buffer.trainable and self.train:
-            if self.step_count % self.train_freq == 0:
+            if self.step_count % self.main_train_freq == 0:
                 self.update_model(self.buffer.sample(self.batchs))
-            elif self.train_count % self.update_freq == 0:
+            elif self.train_count % self.target_update_freq == 0:
                 self.update_target()
             self.decay_epsilon()
 
