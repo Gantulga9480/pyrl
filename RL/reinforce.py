@@ -1,6 +1,7 @@
 import torch
 import os
 from .agent import Agent
+import numpy as np
 
 
 class ReinforceAgent(Agent):
@@ -12,6 +13,7 @@ class ReinforceAgent(Agent):
         self.device = device
         self.log_probs = []
         self.rewards = []
+        self.eps = np.finfo(np.float32).eps.item()
 
     def create_model(self, model: torch.nn.Module, lr: float, y: float):
         self.lr = lr
@@ -62,7 +64,7 @@ class ReinforceAgent(Agent):
         G = torch.tensor(list(reversed(G)))
         A = G - G.mean()  # Advantage (G - Baseline) zero mean
         if len(A) > 1:
-            A /= (A.std())  # Unit variance
+            A /= (A.std() + self.eps)  # Unit variance
         #  sum(grad(pi(a|s) * A))
         #  minimize (1 - pi(a|s))
         loss = torch.tensor([-log_prob * a for log_prob, a in zip(self.log_probs, A)], requires_grad=True).sum()
