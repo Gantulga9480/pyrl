@@ -1,5 +1,4 @@
 import torch
-from torch import nn
 import numpy as np
 import os
 from .agent import Agent
@@ -8,8 +7,8 @@ from .utils import ReplayBufferBase
 
 class DQNAgent(Agent):
 
-    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, device: str = 'cpu', seed: int = 1) -> None:
-        super(DQNAgent, self).__init__(state_space_size, action_space_size, lr, y, e_decay)
+    def __init__(self, state_space_size: int, action_space_size: int, device: str = 'cpu', seed: int = 1) -> None:
+        super(DQNAgent, self).__init__(state_space_size, action_space_size)
         torch.manual_seed(seed)
         np.random.seed(seed)
         self.target_model = None
@@ -19,14 +18,16 @@ class DQNAgent(Agent):
         self.device = device
         self.main_train_freq = 0
         self.target_update_freq = 0
-        self.train_count = 0
 
     def create_buffer(self, buffer: ReplayBufferBase):
         if buffer.min_size == 0:
             buffer.min_size = self.batchs
         self.buffer = buffer
 
-    def create_model(self, model: torch.nn.Module, batchs: int = 64, main_train_freq: int = 1, target_update_freq: int = 100):
+    def create_model(self, model: torch.nn.Module, lr: float = 0.001, y: float = 0.99, e_decay: float = 0.999999, batchs: int = 64, main_train_freq: int = 1, target_update_freq: int = 100):
+        self.lr = lr
+        self.y = y
+        self.e_decay = e_decay
         self.model = model(self.state_space_size, self.action_space_size)
         self.target_model = model(self.state_space_size, self.action_space_size)
         self.target_model.load_state_dict(self.model.state_dict())
@@ -37,7 +38,7 @@ class DQNAgent(Agent):
         self.batchs = batchs
         self.main_train_freq = main_train_freq
         self.target_update_freq = target_update_freq
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = torch.nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
     def save_model(self, path: str) -> None:
@@ -65,7 +66,7 @@ class DQNAgent(Agent):
         """greedy - False (default) for training, True for inference"""
         self.step_count += 1
         self.model.eval()
-        state = torch.Tensor(state).to(self.device)
+        state = torch.tensor(state, dtype=torch.float32).to(self.device)
         is_batch = len(state.size()) > 1
         if not is_batch:
             if not greedy and np.random.random() < self.e:
@@ -79,6 +80,8 @@ class DQNAgent(Agent):
                 return torch.argmax(self.model(state), axis=1).tolist()
 
     def learn(self, state, action, next_state, reward, episode_over):
+        if episode_over:
+            self.episode_count += 1
         batch = len(np.array(state).shape) > 1
         if not batch:
             self.buffer.push([state, action, next_state, reward, episode_over])
@@ -87,7 +90,7 @@ class DQNAgent(Agent):
         if self.buffer.trainable and self.train:
             if self.step_count % self.main_train_freq == 0:
                 self.update_model(self.buffer.sample(self.batchs))
-            elif self.train_count % self.target_update_freq == 0:
+            if self.train_count % self.target_update_freq == 0:
                 self.update_target()
             self.decay_epsilon()
 
@@ -123,4 +126,4 @@ class DQNAgent(Agent):
         loss.backward()
         self.optimizer.step()
         if self.train_count % 100 == 0:
-            print(f"Train: {self.train_count} - loss ---> ", loss.item())
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | Loss: {loss.item():.6f} | e: {self.e:.6f}")

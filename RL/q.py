@@ -4,13 +4,15 @@ from .agent import Agent
 
 class QLAgent(Agent):
 
-    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, seed: int = 1) -> None:
-        super().__init__(state_space_size, action_space_size, lr, y, e_decay)
+    def __init__(self, state_space_size: int, action_space_size: int, seed: int = 1) -> None:
+        super().__init__(state_space_size, action_space_size)
         np.random.seed(seed)
-        self.create_model((*self.state_space_size, self.action_space_size))
 
-    def create_model(self, dim: tuple) -> None:
-        self.model = np.zeros(dim)
+    def create_model(self, lr: float = 0.1, y: float = 0.9, e_decay: float = 0.999) -> None:
+        self.lr = lr
+        self.y = y
+        self.e_decay = e_decay
+        self.model = np.zeros((*self.state_space_size, self.action_space_size))
 
     def save_model(self, path) -> None:
         np.save(path, self.model)

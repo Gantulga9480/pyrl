@@ -22,6 +22,9 @@ class ReplayBufferBase(object):
     def sample(self, *args):
         raise NotImplementedError
 
+    def clear(self):
+        raise NotImplementedError
+
 
 class ReplayBuffer(ReplayBufferBase):
 
@@ -44,6 +47,9 @@ class ReplayBuffer(ReplayBufferBase):
 
     def sample(self, sample_size):
         return random.sample(self.buffer, sample_size)
+
+    def clear(self):
+        self.buffer.clear()
 
 
 class DoubleReplayBuffer(ReplayBufferBase):
@@ -74,3 +80,7 @@ class DoubleReplayBuffer(ReplayBufferBase):
         so = random.sample(self.buffer_old, o_size)
         sn.extend(so)
         return sn
+
+    def clear(self):
+        self.buffer_new.clear()
+        self.buffer_old.clear()

@@ -8,8 +8,8 @@ from .utils import ReplayBufferBase
 
 class DDPGAgent(Agent):
 
-    def __init__(self, state_space_size: int, action_space_size: int, lr: float, y: float, e_decay: float = 0.99999, device: str = 'cpu', seed: int = 1) -> None:
-        super(DDPGAgent, self).__init__(state_space_size, action_space_size, lr, y, e_decay)
+    def __init__(self, state_space_size: int, action_space_size: int, device: str = 'cpu', seed: int = 1) -> None:
+        super(DDPGAgent, self).__init__(state_space_size, action_space_size)
         torch.manual_seed(seed)
         np.random.seed(seed)
         self.target_model = None
