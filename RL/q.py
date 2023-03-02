@@ -2,7 +2,7 @@ import numpy as np
 from .agent import Agent
 
 
-class QLAgent(Agent):
+class QLearningAgent(Agent):
 
     def __init__(self, state_space_size: int, action_space_size: int) -> None:
         super().__init__(state_space_size, action_space_size)
