@@ -1,5 +1,4 @@
-from collections import deque
-import random
+import numpy as np
 
 
 class ReplayBufferBase(object):
@@ -7,11 +6,10 @@ class ReplayBufferBase(object):
     def __init__(self, max_size, min_size) -> None:
         self.max_size = max_size
         self.min_size = min_size
-        self.buffer = None
 
     @property
     def trainable(self):
-        pass
+        return False
 
     def push(self, *args):
         raise NotImplementedError
@@ -22,55 +20,50 @@ class ReplayBufferBase(object):
     def sample(self, *args):
         raise NotImplementedError
 
+    def clear(self):
+        raise NotImplementedError
+
 
 class ReplayBuffer(ReplayBufferBase):
 
-    def __init__(self, max_size, min_size) -> None:
+    def __init__(self, max_size, min_size, state_space_shape) -> None:
         super().__init__(max_size, min_size)
-        self.buffer = deque(maxlen=max_size)
+        self.state_buffer = np.zeros((max_size, state_space_shape), dtype=np.float32)
+        self.next_state_buffer = np.zeros((max_size, state_space_shape), dtype=np.float32)
+        self.action_buffer = np.zeros((max_size, 1), dtype=np.int32)
+        self.reward_buffer = np.zeros((max_size, 1), dtype=np.float32)
+        self.done_buffer = np.zeros((max_size, 1), dtype=np.int32)
+        self.buffer_idx = 0
+        self.is_full = False
 
     @property
     def trainable(self):
-        return self.buffer.__len__() >= self.min_size
+        return self.buffer_idx >= self.min_size or self.is_full
 
-    def push(self, data):
+    def push(self, state, action, next_state, reward, episode_over):
         """Data format [state, action, next_state, reward, episode_over]"""
-        self.buffer.append(data)
-
-    def extend(self, datas):
-        """Data format [[states], [actions], [next_states], [rewards], [episode_overs]]"""
-        data = list(zip(datas[0], datas[1], datas[2], datas[3], datas[4]))
-        self.buffer.extend(data)
+        self.state_buffer[self.buffer_idx] = state
+        self.action_buffer[self.buffer_idx] = action
+        self.next_state_buffer[self.buffer_idx] = next_state
+        self.reward_buffer[self.buffer_idx] = reward
+        self.done_buffer[self.buffer_idx] = episode_over
+        self.buffer_idx += 1
+        if self.buffer_idx == self.max_size:
+            self.is_full = True
+            self.buffer_idx = 0
 
     def sample(self, sample_size):
-        return random.sample(self.buffer, sample_size)
+        buffer_size_len = self.max_size if self.is_full else self.buffer_idx
+        idx = np.random.choice(np.arange(buffer_size_len), sample_size, replace=False)
+        s = np.array(self.state_buffer[idx])
+        ns = np.array(self.next_state_buffer[idx])
+        a = np.concatenate(self.action_buffer[idx])
+        r = np.concatenate(self.reward_buffer[idx])
+        d = np.concatenate(self.done_buffer[idx])
+        return s, a, ns, r, d
 
 
 class DoubleReplayBuffer(ReplayBufferBase):
 
     def __init__(self, max_size, min_size) -> None:
         super().__init__(max_size, min_size)
-        self.buffer_new = deque(maxlen=max_size)
-        self.buffer_old = deque(maxlen=max_size * 4)
-
-    @property
-    def trainable(self):
-        fn = self.buffer_new.__len__() >= self.min_size
-        fo = self.buffer_old.__len__() >= self.min_size
-        return fn and fo
-
-    def push(self, data):
-        if self.buffer_new.__len__() == self.max_size:
-            self.buffer_old.append(self.buffer_new.popleft())
-        self.buffer_new.append(data)
-
-    def extend(self, datas):
-        raise NotImplementedError
-
-    def sample(self, sample_size, factor):
-        n_size = round(sample_size * factor)
-        o_size = sample_size - n_size
-        sn = random.sample(self.buffer_new, n_size)
-        so = random.sample(self.buffer_old, o_size)
-        sn.extend(so)
-        return sn
