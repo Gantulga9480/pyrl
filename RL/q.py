@@ -19,6 +19,12 @@ class QLearningAgent(Agent):
     def load_model(self, path) -> None:
         self.model = np.load(path)
 
+    def policy(self, state: tuple):
+        self.step_count += 1
+        if self.train and np.random.random() < self.e:
+            return np.random.choice(self.action_space_size)
+        return np.argmax(self.model[state])
+
     def learn(self, s: tuple, a: int, ns: tuple, r: float, d: bool) -> None:
         self.train_count += 1
         if not d:
@@ -31,9 +37,3 @@ class QLearningAgent(Agent):
             self.model[s][a] = r * self.y
             self.episode_count += 1
         self.decay_epsilon()
-
-    def policy(self, state, greedy=False):
-        self.step_count += 1
-        if not greedy and np.random.random() < self.e:
-            return np.random.choice(self.action_space_size)
-        return np.argmax(self.model[state])
