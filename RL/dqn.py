@@ -39,7 +39,6 @@ class DeepQNetworkAgent(DeepAgent):
 
     @torch.no_grad()
     def policy(self, state: np.ndarray):
-        """E_greedy - True for training, False (default) for inference"""
         self.step_count += 1
         self.model.eval()
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
@@ -57,26 +56,31 @@ class DeepQNetworkAgent(DeepAgent):
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, episode_over: bool, update: str = "soft"):
         """update: ['hard', 'soft'] = 'soft'"""
-        if episode_over:
-            self.episode_count += 1
         batch = len(state.shape) > 1
         if not batch:
+            self.rewards.append(reward)
             self.buffer.push(state, action, next_state, reward, episode_over)
         else:
+            self.rewards.append(np.mean(reward))
             self.buffer.extend(state, action, next_state, reward, episode_over)
         if self.buffer.trainable and self.train:
             self.update_model()
             if update == "soft":
                 self.target_update_soft()
             elif update == "hard":
-                if self.train_count % self.target_update_freq == 0:
-                    self.target_update_hard()
+                self.target_update_hard()
             else:
-                raise ValueError(f"wrong target update mode -> {update}")
+                raise ValueError(f"Wrong target update mode -> {update}")
             self.decay_epsilon()
+        if episode_over:
+            self.episode_count += 1
+            self.reward_history.append(np.sum(self.rewards))
+            self.rewards = []
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
 
     def target_update_hard(self):
-        self.target_model.load_state_dict(self.model.state_dict())
+        if self.train_count % self.target_update_freq == 0:
+            self.target_model.load_state_dict(self.model.state_dict())
 
     def target_update_soft(self):
         for target_param, local_param in zip(self.target_model.parameters(), self.model.parameters()):
@@ -100,5 +104,3 @@ class DeepQNetworkAgent(DeepAgent):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-        if self.train_count % 100 == 0:
-            print(f"Episode: {self.episode_count} | Train: {self.train_count} | Loss: {loss.item():.6f} | e: {self.e:.6f}")

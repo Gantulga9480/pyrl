@@ -20,11 +20,15 @@ class ReinforceAgent(DeepAgent):
         return action
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, episode_over: bool):
-        if self.train:
-            self.rewards.append(reward)
-            if episode_over:
-                self.episode_count += 1
+        self.rewards.append(reward)
+        if episode_over:
+            self.episode_count += 1
+            self.reward_history.append(np.sum(self.rewards))
+            if self.train:
                 self.update_model()
+            else:
+                self.rewards = []
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
 
     def update_model(self):
         self.train_count += 1
@@ -35,16 +39,13 @@ class ReinforceAgent(DeepAgent):
             G.append(r_sum)
         G = torch.tensor(list(reversed(G)), dtype=torch.float32)
         A = G - G.mean()
-        if len(A) > 1:
-            A /= (A.std() + self.eps)
+        A /= (A.std() + self.eps)
 
         loss = torch.stack([-log_prob * a for log_prob, a in zip(self.log_probs, A)]).sum()
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
-        print(f"Episode: {self.episode_count} | Train: {self.train_count} | loss: {loss.item():.6f}")
 
         self.rewards = []
         self.log_probs = []

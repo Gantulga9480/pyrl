@@ -49,7 +49,6 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
 
     @torch.no_grad()
     def policy(self, state):
-        """greedy - False (default) for training, True for inference"""
         self.step_count += 1
         self.actor.eval()
         state = torch.Tensor(state).to(self.device)
@@ -60,12 +59,16 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
             return action
 
     def learn(self, state: np.ndarray, action, next_state: np.ndarray, reward, episode_over: bool):
+        self.rewards.append(reward)
         self.buffer.push(state, action, next_state, reward, episode_over)
-        if episode_over:
-            self.episode_count += 1
         if self.buffer.trainable and self.train:
             self.update_model()
             self.update_target()
+        if episode_over:
+            self.episode_count += 1
+            self.reward_history.append(np.sum(self.rewards))
+            self.rewards = []
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
 
     def update_target(self):
         for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
@@ -91,11 +94,7 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
         self.critic_optimizer.step()
 
         p_actions = self.actor(states)
-        # with torch.no_grad():
         actor_loss = -self.critic(states, p_actions).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
-
-        if self.train_count % 100 == 0:
-            print(f"Episode: {self.episode_count} | Train: {self.train_count} | actor_loss: {actor_loss.item():.6f} | critic_loss: {critic_loss.item():.6f}")

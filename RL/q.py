@@ -19,21 +19,24 @@ class QLearningAgent(Agent):
     def load_model(self, path) -> None:
         self.model = np.load(path)
 
-    def policy(self, state: tuple):
+    def learn(self, state: tuple, action: int, next_state: tuple, reward: float, episode_over: bool) -> None:
+        self.rewards.append(reward)
+        self.train_count += 1
+        if not episode_over:
+            max_future_q_value = np.max(self.model[next_state])
+            current_q_value = self.model[state][action]
+            new_q_value = current_q_value + self.lr * (reward + self.y * max_future_q_value - current_q_value)
+            self.model[state][action] = new_q_value
+        else:
+            self.model[state][action] = reward
+            self.episode_count += 1
+            self.reward_history.append(np.sum(self.rewards))
+            self.rewards = []
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
+        self.decay_epsilon()
+
+    def policy(self, state):
         self.step_count += 1
         if self.train and np.random.random() < self.e:
             return np.random.choice(self.action_space_size)
         return np.argmax(self.model[state])
-
-    def learn(self, s: tuple, a: int, ns: tuple, r: float, d: bool) -> None:
-        self.train_count += 1
-        if not d:
-            max_future_q_value = np.max(self.model[ns])
-            current_q_value = self.model[s][a]
-            new_q_value = current_q_value + self.lr * \
-                (r + self.y * max_future_q_value - current_q_value)
-            self.model[s][a] = new_q_value
-        else:
-            self.model[s][a] = r * self.y
-            self.episode_count += 1
-        self.decay_epsilon()

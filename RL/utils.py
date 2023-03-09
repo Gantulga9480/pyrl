@@ -67,4 +67,3 @@ class DoubleReplayBuffer(ReplayBufferBase):
 
     def __init__(self, max_size, min_size) -> None:
         super().__init__(max_size, min_size)
-        raise NotImplementedError

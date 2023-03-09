@@ -13,6 +13,8 @@ class Agent:
         self.step_count = 0
         self.episode_count = 0
         self.train_count = 0
+        self.rewards = []
+        self.reward_history = []
 
     def create_model(self, *args, **kwargs) -> None:
         pass
