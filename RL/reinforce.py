@@ -38,10 +38,11 @@ class ReinforceAgent(DeepAgent):
             r_sum = r_sum * self.y + r
             G.append(r_sum)
         G = torch.tensor(list(reversed(G)), dtype=torch.float32)
-        A = G - G.mean()
-        A /= (A.std() + self.eps)
+        G -= G.mean()
+        if len(G) > 1:
+            G /= (G.std() + self.eps)
 
-        loss = torch.stack([-log_prob * a for log_prob, a in zip(self.log_probs, A)]).sum()
+        loss = torch.stack([-log_prob * a for log_prob, a in zip(self.log_probs, G)]).sum()
 
         self.optimizer.zero_grad()
         loss.backward()
