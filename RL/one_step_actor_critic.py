@@ -4,16 +4,16 @@ from .deep_agent import DeepAgent
 import numpy as np
 
 
-class ActorCriticAgent(DeepAgent):
+class OneStepActorCriticAgent(DeepAgent):
 
     def __init__(self, state_space_size: int, action_space_size: int, device: str = 'cpu') -> None:
         super().__init__(state_space_size, action_space_size, device)
         self.actor = None
         self.critic = None
-        self.log_probs = []
-        self.values = []
+        self.LOG = None
         self.eps = np.finfo(np.float32).eps.item()
-        self.loss_fn = torch.nn.HuberLoss(reduction='sum')
+        self.loss_fn = torch.nn.HuberLoss(reduction="sum")
+        self.i = 1
         self.reward_norm_factor = 1.0
         del self.model
         del self.optimizer
@@ -33,7 +33,7 @@ class ActorCriticAgent(DeepAgent):
 
     def policy(self, state):
         self.step_count += 1
-        state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
+        state = torch.tensor(state).float().unsqueeze(0).to(self.device)
         if not self.training:
             self.actor.eval()
             with torch.no_grad():
@@ -44,50 +44,54 @@ class ActorCriticAgent(DeepAgent):
         probs = self.actor(state)
         distribution = Categorical(probs)
         action = distribution.sample()
-        log_prob = distribution.log_prob(action)
-        self.log_probs.append(log_prob)
-        value = self.critic(state)
-        self.values.append(value)
+        self.LOG = distribution.log_prob(action)
         return action.item()
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, episode_over: bool):
         self.rewards.append(reward)
+        self.update_model(state, next_state, reward, episode_over)
         if episode_over:
+            self.i = 1
+            self.episode_count += 1
             self.step_count = 0
             self.reward_history.append(np.sum(self.rewards))
-            if len(self.rewards) > 1:
-                self.episode_count += 1
-                self.update_model()
-                print(f"Episode: {self.episode_count} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
             self.rewards.clear()
+            print(f"Episode: {self.episode_count} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
 
-    def update_model(self):
+    def update_model(self, state, next_state, reward, done):
         self.train_count += 1
         self.actor.train()
-        g = np.array(self.rewards, dtype=np.float32)
-        g /= self.reward_norm_factor
-        r_sum = 0
-        for i in reversed(range(g.shape[0])):
-            g[i] = r_sum = r_sum * self.y + g[i]
-        G = torch.tensor(g).unsqueeze(0).to(self.device)
-        G -= G.mean()
-        G /= (G.std() + self.eps)
 
-        V = torch.cat(self.values, dim=1)
-        # swapping position for no negative sign on actor_loss
-        A = V.detach() - G
+        reward /= self.reward_norm_factor
+        state = torch.tensor(state, dtype=torch.float32).to(self.device)
+        next_state = torch.tensor(next_state, dtype=torch.float32).to(self.device)
 
-        LOG = torch.cat(self.log_probs)
-        actor_loss = LOG @ A.T
+        # Bug? It doesn't need to compute a computational graph when forwarding next_state.
+        # But skipping that part breaks learning. Weird!
+        # with torch.no_grad():
+        # Next state value
+        V_ = (1.0 - done) * self.critic(next_state)
+        # Current state value
+        V = self.critic(state)
+
+        # Expected return
+        G = reward / self.reward_norm_factor + self.y * V_
+
         critic_loss = self.loss_fn(V, G)
-
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+        critic_loss *= self.i
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        self.log_probs.clear()
-        self.values.clear()
+        # Swapping position for no negative sign on actor_loss
+        # TD error/Advantage
+        A = V.item() - G.item()
+        actor_loss = self.LOG * A
+        actor_loss *= self.i
+
+        self.actor_optimizer.zero_grad()
+        actor_loss.backward()
+        self.actor_optimizer.step()
+
+        self.i *= self.y

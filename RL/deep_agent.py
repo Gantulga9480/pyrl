@@ -7,10 +7,16 @@ class DeepAgent(Agent):
 
     def __init__(self, state_space_size: int, action_space_size: int, device: str = 'cpu') -> None:
         super().__init__(state_space_size, action_space_size)
-        self.model = None
         self.device = device
+        self.model = None
         self.optimizer = None
         self.loss_fn = None
+
+    def train(self):
+        pass
+
+    def eval(self):
+        pass
 
     def create_model(self, model: torch.nn.Module, lr: float, y: float):
         self.lr = lr

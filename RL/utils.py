@@ -26,11 +26,11 @@ class ReplayBufferBase(object):
 
 class ReplayBuffer(ReplayBufferBase):
 
-    def __init__(self, max_size, min_size, state_space_shape) -> None:
+    def __init__(self, max_size, min_size, state_space_shape, action_space_shape=1) -> None:
         super().__init__(max_size, min_size)
         self.state_buffer = np.zeros((max_size, state_space_shape), dtype=np.float32)
         self.next_state_buffer = np.zeros((max_size, state_space_shape), dtype=np.float32)
-        self.action_buffer = np.zeros((max_size, 1), dtype=np.int32)
+        self.action_buffer = np.zeros((max_size, action_space_shape), dtype=np.int32)
         self.reward_buffer = np.zeros((max_size, 1), dtype=np.float32)
         self.done_buffer = np.zeros((max_size, 1), dtype=np.int32)
         self.buffer_idx = 0
