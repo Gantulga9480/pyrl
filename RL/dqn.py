@@ -52,7 +52,7 @@ class DeepQNetworkAgent(DeepAgent):
         self.step_count += 1
         self.model.eval()
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
-        if self.train and np.random.random() < self.e:
+        if self.training and np.random.random() < self.e:
             return np.random.choice(self.action_space_size)
         else:
             return torch.argmax(self.model(state)).item()

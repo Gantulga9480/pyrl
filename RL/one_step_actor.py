@@ -32,7 +32,7 @@ class OneStepActor(DeepAgent):
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, episode_over: bool):
         self.rewards.append(reward)
-        if self.train:
+        if self.training:
             self.update_model(reward)
         if episode_over:
             self.i = 1.0

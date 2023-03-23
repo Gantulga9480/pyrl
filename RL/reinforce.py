@@ -19,7 +19,7 @@ class ReinforceAgent(DeepAgent):
     def policy(self, state):
         self.step_count += 1
         state = torch.tensor(state, dtype=torch.float32).unsqueeze(0).to(self.device)
-        if not self.train:
+        if not self.training:
             self.model.eval()
             with torch.no_grad():
                 probs = self.model(state).squeeze(0)

@@ -41,7 +41,7 @@ class QLearningAgent(Agent):
 
     def policy(self, state):
         self.step_count += 1
-        if self.train and np.random.random() < self.e:
+        if self.training and np.random.random() < self.e:
             return np.random.choice(self.action_space_size)
         return np.argmax(self.model[state])
 

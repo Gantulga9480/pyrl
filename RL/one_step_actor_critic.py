@@ -66,7 +66,7 @@ class OneStepActorCriticAgent(DeepAgent):
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
         next_state = torch.tensor(next_state, dtype=torch.float32).to(self.device)
 
-        # Bug? It doesn't need to compute a computational graph when forwarding next_state.
+        # Bug? It doesn't seem to need to compute computational graph when forwarding next_state.
         # But skipping that part breaks learning. Weird!
         # with torch.no_grad():
         # Next state value
