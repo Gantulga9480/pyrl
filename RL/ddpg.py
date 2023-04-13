@@ -28,8 +28,8 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
             buffer.min_size = self.batch
         self.buffer = buffer
 
-    def create_model(self, actor: torch.nn.Module, critic: torch.nn.Module, actor_lr: float, critic_lr: float, y: float, noise_std: float, batch: int = 64, tau: float = 0.001, reward_norm_factor: float = 1.0):
-        self.y = y
+    def create_model(self, actor: torch.nn.Module, critic: torch.nn.Module, actor_lr: float, critic_lr: float, gamma: float, noise_std: float, batch: int = 64, tau: float = 0.001, reward_norm_factor: float = 1.0):
+        self.gamma = gamma
         self.noise_std = noise_std
         self.batch = batch
         self.target_update_rate = tau
@@ -53,7 +53,7 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
 
     @torch.no_grad()
     def policy(self, state):
-        self.step_count += 1
+        self.step_counter += 1
         self.actor.eval()
         state = torch.Tensor(state).to(self.device)
         action = self.actor(state).cpu().numpy()
@@ -62,18 +62,18 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
         else:
             return action
 
-    def learn(self, state: np.ndarray, action: float, next_state: np.ndarray, reward: float, episode_over: bool):
-        self.buffer.push(state, action, next_state, reward, episode_over)
+    def learn(self, state: np.ndarray, action: float, next_state: np.ndarray, reward: float, done: bool):
+        self.buffer.push(state, action, next_state, reward, done)
         if self.buffer.trainable:
             self.rewards.append(reward)
             self.update_model()
             self.update_target()
-            if episode_over:
-                self.step_count = 0
-                self.episode_count += 1
+            if done:
+                self.step_counter = 0
+                self.episode_counter += 1
                 self.reward_history.append(np.sum(self.rewards))
                 self.rewards.clear()
-                print(f"Episode: {self.episode_count} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
+                print(f"Episode: {self.episode_counter} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
 
     def update_target(self):
         for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
@@ -91,8 +91,9 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
         next_states = torch.tensor(ns).float().to(self.device)
         rewards = torch.tensor(r).float().view(self.batch, 1).to(self.device)
         dones = torch.tensor(d).float().view(self.batch, 1).to(self.device)
+
         with torch.no_grad():
-            y = rewards + (1 - dones) * self.y * self.target_critic(next_states, self.target_actor(next_states))
+            y = rewards + (1 - dones) * self.gamma * self.target_critic(next_states, self.target_actor(next_states))
 
         self.actor.train()
         preds = self.critic(states, actions)

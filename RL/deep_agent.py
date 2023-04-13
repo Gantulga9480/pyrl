@@ -18,9 +18,9 @@ class DeepAgent(Agent):
     def eval(self):
         pass
 
-    def create_model(self, model: torch.nn.Module, lr: float, y: float):
+    def create_model(self, model: torch.nn.Module, lr: float, gamma: float):
         self.lr = lr
-        self.y = y
+        self.gamma = gamma
         self.model = model(self.state_space_size, self.action_space_size)
         self.model.to(self.device)
         self.model.train()

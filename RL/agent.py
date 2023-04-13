@@ -4,11 +4,11 @@ class Agent:
         self.state_space_size = state_space_size
         self.action_space_size = action_space_size
         self.lr = 0.001
-        self.y = 0.99
+        self.gamma = 0.99
         self.model = None
         self.training = True
-        self.step_count = 0
-        self.episode_count = 0
+        self.step_counter = 0
+        self.episode_counter = 0
         self.train_count = 0
         self.rewards = []
         self.reward_history = []

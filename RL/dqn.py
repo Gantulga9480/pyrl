@@ -26,8 +26,8 @@ class DeepQNetworkAgent(DeepAgent):
             buffer.min_size = self.batch
         self.buffer = buffer
 
-    def create_model(self, model: torch.nn.Module, lr: float, y: float, e_decay: float = 0.999999, batch: int = 64, target_update_method: str = "soft", tuf: int = 10, tau: float = 0.001, reward_norm_factor: float = 1.0):
-        super().create_model(model, lr, y)
+    def create_model(self, model: torch.nn.Module, lr: float, gamma: float, e_decay: float = 0.999999, batch: int = 64, target_update_method: str = "soft", tuf: int = 10, tau: float = 0.001, reward_norm_factor: float = 1.0):
+        super().create_model(model, lr, gamma)
         self.target_model = model(self.state_space_size, self.action_space_size)
         self.target_model.load_state_dict(self.model.state_dict())
         self.target_model.to(self.device)
@@ -49,7 +49,7 @@ class DeepQNetworkAgent(DeepAgent):
 
     @torch.no_grad()
     def policy(self, state: np.ndarray):
-        self.step_count += 1
+        self.step_counter += 1
         self.model.eval()
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
         if self.training and np.random.random() < self.e:
@@ -57,20 +57,20 @@ class DeepQNetworkAgent(DeepAgent):
         else:
             return torch.argmax(self.model(state)).item()
 
-    def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, episode_over: bool):
+    def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         """update: ['hard', 'soft'] = 'soft'"""
-        self.buffer.push(state, action, next_state, reward, episode_over)
+        self.buffer.push(state, action, next_state, reward, done)
         if self.buffer.trainable:
             self.rewards.append(reward)
             self.update_model()
             self.target_update_fn()
-            if episode_over:
+            if done:
                 self.decay_epsilon()
-                self.episode_count += 1
-                self.step_count = 0
+                self.episode_counter += 1
+                self.step_counter = 0
                 self.reward_history.append(np.sum(self.rewards))
                 self.rewards.clear()
-                print(f"Episode: {self.episode_count} | Train: {self.train_count} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
+                print(f"Episode: {self.episode_counter} | Train: {self.train_count} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
 
     def decay_epsilon(self):
         self.e = max(self.e_min, self.e * self.e_decay)
@@ -95,7 +95,7 @@ class DeepQNetworkAgent(DeepAgent):
         with torch.no_grad():
             current_qs = self.model(states)
             future_qs = self.target_model(next_states)
-            current_qs[torch.arange(self.batch), a] = r + (1 - d) * self.y * torch.max(future_qs, dim=1).values
+            current_qs[torch.arange(self.batch), a] = r + (1 - d) * self.gamma * torch.max(future_qs, dim=1).values
 
         self.model.train()
         preds = self.model(states)
