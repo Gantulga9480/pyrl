@@ -53,9 +53,9 @@ class DeepQNetworkAgent(DeepAgent):
         self.model.eval()
         state = torch.tensor(state, dtype=torch.float32).to(self.device)
         if self.training and np.random.random() < self.e:
-            return np.random.choice(self.action_space_size)
+            return np.random.choice(self.action_space_size, size=1)
         else:
-            return torch.argmax(self.model(state)).item()
+            return torch.argmax(self.model(state), keepdim=True).cpu().numpy()
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         """update: ['hard', 'soft'] = 'soft'"""
