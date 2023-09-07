@@ -51,11 +51,11 @@ class ReinforceAgent(DeepAgent):
             if len(self.rewards) > 1:
                 self.episode_counter += 1
                 self.update_model()
-                print(f"Episode: {self.episode_counter} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
+                print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | r: {self.reward_history[-1]:.6f}")
             self.rewards.clear()
 
     def update_model(self):
-        self.train_count += 1
+        self.train_counter += 1
         self.model.train()
         g = np.array(self.rewards, dtype=np.float32)
         g /= self.reward_norm_factor

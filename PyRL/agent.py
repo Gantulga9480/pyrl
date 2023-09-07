@@ -9,7 +9,7 @@ class Agent:
         self.training = True
         self.step_counter = 0
         self.episode_counter = 0
-        self.train_count = 0
+        self.train_counter = 0
         self.rewards = []
         self.reward_history = []
 

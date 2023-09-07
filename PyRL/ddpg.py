@@ -16,8 +16,7 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
         self.batch = 0
         self.target_update_rate = 0
         self.noise = 0
-        self.train_count = 0
-        self.loss_fn = torch.nn.HuberLoss()
+        self.loss_fn = torch.nn.HuberLoss(reduction='mean')
         self.reward_norm_factor = 1.0
         del self.lr
         del self.model
@@ -63,7 +62,7 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
             return action
 
     def learn(self, state: np.ndarray, action: float, next_state: np.ndarray, reward: float, done: bool):
-        self.buffer.push(state, action, next_state, reward, done)
+        self.buffer.push(np.copy(state), np.copy(action), np.copy(next_state), np.copy(reward), done)
         if self.buffer.trainable:
             self.rewards.append(reward)
             self.update_model()
@@ -73,7 +72,7 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
                 self.episode_counter += 1
                 self.reward_history.append(np.sum(self.rewards))
                 self.rewards.clear()
-                print(f"Episode: {self.episode_counter} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
+                print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | r: {self.reward_history[-1]:.6f}")
 
     def update_target(self):
         for target_param, local_param in zip(self.target_actor.parameters(), self.actor.parameters()):
@@ -83,7 +82,9 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
             target_param.data.copy_(self.target_update_rate * local_param.data + (1.0 - self.target_update_rate) * target_param.data)
 
     def update_model(self):
-        self.train_count += 1
+        self.train_counter += 1
+        self.actor.train()
+
         s, a, ns, r, d = self.buffer.sample(self.batch)
         r /= self.reward_norm_factor
         states = torch.tensor(s).float().to(self.device)
@@ -95,16 +96,13 @@ class DeepDeterministicPolicyGradientAgent(DeepAgent):
         with torch.no_grad():
             y = rewards + (1 - dones) * self.gamma * self.target_critic(next_states, self.target_actor(next_states))
 
-        self.actor.train()
-        preds = self.critic(states, actions)
-        critic_loss = self.loss_fn(preds, y)
+        critic_loss = self.loss_fn(self.critic(states, actions), y)
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
         self.critic_optimizer.step()
 
-        p_actions = self.actor(states)
-        actor_loss = -self.critic(states, p_actions).mean()
+        actor_loss = -self.critic(states, self.actor(states)).mean()
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

@@ -68,10 +68,10 @@ class OneStepActorCriticAgent(DeepAgent):
             self.step_counter = 0
             self.reward_history.append(np.sum(self.rewards))
             self.rewards.clear()
-            print(f"Episode: {self.episode_counter} | Train: {self.train_count} | r: {self.reward_history[-1]:.6f}")
+            print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | r: {self.reward_history[-1]:.6f}")
 
     def update_model(self, state, next_state, reward, done):
-        self.train_count += 1
+        self.train_counter += 1
 
         reward /= self.reward_norm_factor
         state = torch.tensor(state).float().to(self.device)

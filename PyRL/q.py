@@ -29,11 +29,11 @@ class QLearningAgent(Agent):
 
     def learn(self, state: tuple, action: int, next_state: tuple, reward: float, done: bool) -> None:
         self.rewards.append(reward)
-        self.train_count += 1
+        self.train_counter += 1
         if not done:
             max_future_q_value = np.max(self.model[next_state])
             current_q_value = self.model[state][action]
-            new_q_value = current_q_value + self.lr * (reward + self.y * max_future_q_value - current_q_value)
+            new_q_value = current_q_value + self.lr * (reward + self.gamma * max_future_q_value - current_q_value)
             self.model[state][action] = new_q_value
         else:
             self.model[state][action] = reward
@@ -41,7 +41,7 @@ class QLearningAgent(Agent):
             self.step_counter = 0
             self.reward_history.append(np.sum(self.rewards))
             self.rewards.clear()
-            print(f"Episode: {self.episode_counter} | Train: {self.train_count} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
+            print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
         self.decay_epsilon()
 
     def policy(self, state):
