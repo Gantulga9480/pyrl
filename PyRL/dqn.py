@@ -51,11 +51,13 @@ class DeepQNetworkAgent(DeepAgent):
     def policy(self, state: np.ndarray):
         self.step_counter += 1
         self.model.eval()
-        state = torch.tensor(state, dtype=torch.float32).to(self.device)
+
+        state = torch.Tensor(state).unsqueeze(0).to(self.device) if state.ndim == 1 else torch.Tensor(state).to(self.device)
+
         if self.training and np.random.random() < self.e:
-            return np.random.choice(self.action_space_size, size=1)
+            return int(np.random.choice(self.action_space_size, size=1))
         else:
-            return torch.argmax(self.model(state), keepdim=True).cpu().numpy()
+            return int(torch.argmax(self.model(state).squeeze(0)).cpu().numpy())
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         """update: ['hard', 'soft'] = 'soft'"""
@@ -85,6 +87,9 @@ class DeepQNetworkAgent(DeepAgent):
 
     def update_model(self):
         self.train_counter += 1
+        self.model.train()
+        self.optimizer.zero_grad()
+
         s, a, ns, r, d = self.buffer.sample(self.batch)
         r /= self.reward_norm_factor
         states = torch.tensor(s).float().to(self.device)
@@ -101,6 +106,5 @@ class DeepQNetworkAgent(DeepAgent):
         preds = self.model(states)
         loss = self.loss_fn(preds, current_qs).to(self.device)
 
-        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()

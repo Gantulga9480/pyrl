@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -75,19 +74,16 @@ except KeyboardInterrupt:
     pass
 env.close()
 
-plt.xlabel(f"{ENV_NAME} - {TRAIN_ID}")
-plt.plot(agent.reward_history)
-plt.show()
-
-# with open(f"results/{TRAIN_ID}.txt", "w") as f:
-#     f.writelines([str(item) + '\n' for item in agent.reward_history])
-agent.training = False
+agent.eval()
 
 env = gym.make(ENV_NAME, render_mode="human")
-for _ in range(10):
+reward = 0
+for _ in range(1):
     done = False
     state, _ = env.reset()
     while not done:
         action = agent.policy(state)[0]
-        state, _, d, t, _ = env.step(action)
+        state, r, d, t, _ = env.step(action)
         done = d or t
+        reward += r
+print(reward)

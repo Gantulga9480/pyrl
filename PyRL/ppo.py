@@ -71,10 +71,10 @@ class ProximalPolicyOptimizationAgent(DeepAgent):
 
     @torch.no_grad()
     def policy(self, state: np.ndarray):
+        self.step_counter += 1
         self.actor.eval()
         self.critic.eval()
 
-        self.step_counter += 1
         if state.ndim == 1:
             state = torch.Tensor(state).unsqueeze(0).to(self.device)
         else:

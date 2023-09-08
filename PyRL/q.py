@@ -44,11 +44,11 @@ class QLearningAgent(Agent):
             print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
         self.decay_epsilon()
 
-    def policy(self, state):
+    def policy(self, state: tuple) -> int:
         self.step_counter += 1
         if self.training and np.random.random() < self.e:
-            return np.random.choice(self.action_space_size)
-        return np.argmax(self.model[state])
+            return int(np.random.choice(self.action_space_size))
+        return int(np.argmax(self.model[state]))
 
     def decay_epsilon(self):
         self.e = max(self.e_min, self.e * self.e_decay)

@@ -13,10 +13,10 @@ class DeepAgent(Agent):
         self.loss_fn = None
 
     def train(self):
-        pass
+        self.training = True
 
     def eval(self):
-        pass
+        self.training = False
 
     def create_model(self, model: torch.nn.Module, lr: float, gamma: float):
         self.lr = lr

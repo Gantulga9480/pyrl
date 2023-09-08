@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
@@ -46,30 +45,15 @@ torch.manual_seed(3407)
 torch.cuda.manual_seed(3407)
 np.random.seed(3407)
 
-
 ENV_NAME = "CartPole-v1"
-TRAIN_ID = "ppo_rewards_norm_loss_mean"
+DEVICE = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 env = gym.make(ENV_NAME, render_mode=None)
-agent = PPO(env.observation_space.shape[0], env.action_space.n, device="cuda:0")
-agent.create_model(Actor,
-                   Critic,
-                   actor_lr=0.0003,
-                   critic_lr=0.003,
-                   gamma=0.99,
-                   gae_lambda=0.95,
-                   entropy_coef=0.01,
-                   vf_coef=1,
-                   clip_coef=0.2,
-                   target_kl=0.02,
-                   max_grad_norm=1,
-                   step_count=500,
-                   batch=500,
-                   epoch=100,
-                   reward_norm_factor=1)
+agent = PPO(env.observation_space.shape[0], env.action_space.n, device=DEVICE)
+agent.create_model(Actor, Critic, actor_lr=0.0003, critic_lr=0.003, gamma=0.99, gae_lambda=0.95, entropy_coef=0.01, vf_coef=1, clip_coef=0.2, target_kl=0.02, max_grad_norm=1, step_count=500, batch=500, epoch=100, reward_norm_factor=1)
 
 try:
     while agent.episode_counter < 1000:
-        state, _ = env.reset()
+        state, _ = env.reset(seed=3407)
         done = False
         while not done:
             action = agent.policy(state)
@@ -81,13 +65,7 @@ except KeyboardInterrupt:
     pass
 env.close()
 
-plt.xlabel(f"{ENV_NAME} - {TRAIN_ID}")
-plt.plot(agent.reward_history)
-plt.show()
-
-# with open(f"results/{TRAIN_ID}.txt", "w") as f:
-#     f.writelines([str(item) + '\n' for item in agent.reward_history])
-# agent.training = False
+agent.eval()
 
 env = gym.make(ENV_NAME, render_mode="human")
 reward = 0

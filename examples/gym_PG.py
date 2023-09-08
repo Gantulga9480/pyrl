@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.reinforce import ReinforceAgent  # noqa
+from PyRL import ReinforceAgent  # noqa
 
 
 class PG(nn.Module):
@@ -30,13 +29,13 @@ np.random.seed(3407)
 
 
 ENV_NAME = "CartPole-v1"
-TRAIN_ID = "ri_rewards_sum"
+DEVICE = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 env = gym.make(ENV_NAME, render_mode=None)
-agent = ReinforceAgent(env.observation_space.shape[0], env.action_space.n, device="cuda:0")
-agent.create_model(PG, lr=0.0001, entropy_coef=0.7, y=0.99)
+agent = ReinforceAgent(env.observation_space.shape[0], env.action_space.n, device=DEVICE)
+agent.create_model(PG, lr=0.003, gamma=0.99, entropy_coef=0.01)
 
 try:
-    while agent.episode_count < 1000:
+    while agent.episode_counter < 1000:
         done = False
         s, i = env.reset(seed=3407)
         while not done:
@@ -49,9 +48,14 @@ except KeyboardInterrupt:
     pass
 env.close()
 
-plt.xlabel(f"{ENV_NAME} - {TRAIN_ID}")
-plt.plot(agent.reward_history)
-plt.show()
-
-# with open(f"{TRAIN_ID}.txt", "w") as f:
-#     f.writelines([str(item) + '\n' for item in agent.reward_history])
+env = gym.make(ENV_NAME, render_mode="human")
+reward = 0
+for _ in range(1):
+    done = False
+    state, _ = env.reset()
+    while not done:
+        action = agent.policy(state)
+        state, r, d, t, _ = env.step(action)
+        done = d or t
+        reward += r
+print(reward)
