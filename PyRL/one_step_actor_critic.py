@@ -10,15 +10,12 @@ class OneStepActorCriticAgent(DeepAgent):
         super().__init__(state_space_size, action_space_size, device)
         self.actor = None
         self.critic = None
-        self.LOG = None
-        self.ENTROPY = None
         self.eps = np.finfo(np.float32).eps.item()
         self.loss_fn = torch.nn.HuberLoss(reduction="mean")
         self.i = 1
         self.reward_norm_factor = 1.0
         self.entropy_coef = 0.1
         del self.model
-        del self.optimizer
         del self.lr
 
     def create_model(self,
@@ -26,8 +23,8 @@ class OneStepActorCriticAgent(DeepAgent):
                      critic: torch.nn.Module,
                      actor_lr: float,
                      critic_lr: float,
-                     gamma: float,
-                     entropy_coef: float,
+                     gamma: float = 0.99,
+                     entropy_coef: float = 0.01,
                      reward_norm_factor: float = 1.0):
         self.entropy_coef = entropy_coef
         self.gamma = gamma
@@ -38,30 +35,30 @@ class OneStepActorCriticAgent(DeepAgent):
         self.critic = critic(self.state_space_size)
         self.critic.to(self.device)
         self.critic.train()
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_lr)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_lr)
+        self.optimizer = torch.optim.Adam([
+            {'params': self.actor.parameters(), 'lr': actor_lr},
+            {'params': self.critic.parameters(), 'lr': critic_lr}
+        ])
 
-    def policy(self, state):
+    @torch.no_grad()
+    def policy(self, state: np.ndarray):
         self.step_counter += 1
-        state = torch.tensor(state).float().unsqueeze(0).to(self.device)
-        if not self.training:
-            self.actor.eval()
-            with torch.no_grad():
-                probs = self.actor(state)
-                distribution = Categorical(probs)
-                action = distribution.sample()
-            return action.item()
-        self.actor.train()
-        probs = self.actor(state)
+        self.actor.eval()
+
+        if state.ndim == 1:
+            state = torch.Tensor(state).unsqueeze(0).to(self.device)
+        else:
+            state = torch.Tensor(state).to(self.device)
+
+        probs = self.actor(state).squeeze(0)
         distribution = Categorical(probs)
         action = distribution.sample()
-        self.LOG = distribution.log_prob(action)
-        self.ENTROPY = distribution.entropy()
-        return action.item()
+
+        return int(action.cpu().numpy())
 
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         self.rewards.append(reward)
-        self.update_model(state, next_state, reward, done)
+        self.update_model(state, action, next_state, reward, done)
         if done:
             self.i = 1
             self.episode_counter += 1
@@ -70,38 +67,45 @@ class OneStepActorCriticAgent(DeepAgent):
             self.rewards.clear()
             print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | r: {self.reward_history[-1]:.6f}")
 
-    def update_model(self, state, next_state, reward, done):
+    def update_model(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         self.train_counter += 1
+        self.actor.train()
+        self.critic.train()
+        self.optimizer.zero_grad()
+
+        state = torch.Tensor(state).unsqueeze(0).to(self.device) if state.ndim == 1 else torch.Tensor(state).to(self.device)
+        next_state = torch.Tensor(next_state).unsqueeze(0).to(self.device) if next_state.ndim == 1 else torch.Tensor(next_state).to(self.device)
+        action = torch.Tensor([action]).to(self.device)
 
         reward /= self.reward_norm_factor
-        state = torch.tensor(state).float().to(self.device)
-        next_state = torch.tensor(next_state).float().to(self.device)
 
         # Bug? It doesn't seem to need to compute computational graph when forwarding next_state.
         # But skipping that part with torch.no_grad() breaks learning. Weird!
 
         # Next state value
-        V_ = (1.0 - done) * self.critic(next_state)
+        with torch.no_grad():
+            V_ = (1.0 - done) * self.critic(next_state)
 
         # Current state value
         V = self.critic(state)
 
         # Expected return from current state
-        G = reward + self.gamma * V_.detach()
+        G = reward + self.gamma * V_
 
         # TD error/Advantage
-        A = G.detach() - (1.0 - done) * V.detach()
+        A = G - (1.0 - done) * V.detach()
 
-        critic_loss = A * self.i * self.loss_fn(V, G)
+        critic_loss = A * self.loss_fn(V, G)
 
-        self.critic_optimizer.zero_grad()
-        critic_loss.backward()
-        self.critic_optimizer.step()
+        distribution = Categorical(probs=self.actor(state))
+        LOG = distribution.log_prob(action)
+        ENTROPY = distribution.entropy() * self.entropy_coef
 
-        actor_loss = A * self.i * -self.LOG
+        actor_loss = A * LOG
 
-        self.actor_optimizer.zero_grad()
-        actor_loss.backward()
-        self.actor_optimizer.step()
+        loss = -self.i * (actor_loss - critic_loss + ENTROPY)
+
+        loss.backward()
+        self.optimizer.step()
 
         self.i *= self.gamma
