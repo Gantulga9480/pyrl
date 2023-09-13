@@ -5,7 +5,7 @@ import gym
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.ppo import ProximalPolicyOptimizationAgent as PPO  # noqa
+from pyrl.ppo import ProximalPolicyOptimizationAgent as PPO  # noqa
 
 
 class Actor(nn.Module):

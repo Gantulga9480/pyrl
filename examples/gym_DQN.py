@@ -5,8 +5,8 @@ import gym
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.dqn import DeepQNetworkAgent  # noqa
-from PyRL.utils import ReplayBuffer     # noqa
+from pyrl.dqn import DeepQNetworkAgent  # noqa
+from pyrl.utils import ReplayBuffer     # noqa
 
 
 class DQN(nn.Module):

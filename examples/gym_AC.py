@@ -5,7 +5,7 @@ import gym
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.actor_critic import ActorCriticAgent  # noqa
+from pyrl.actor_critic import ActorCriticAgent  # noqa
 
 
 class Actor(nn.Module):

@@ -5,7 +5,7 @@ import gym
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL import ReinforceAgent  # noqa
+from pyrl.reinforce import ReinforceAgent  # noqa
 
 
 class PG(nn.Module):
