@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.one_step_actor_critic import OneStepActorCriticAgent as OSAC  # noqa
+from pyrl.one_step_actor_critic import OneStepActorCriticAgent as OSAC  # noqa
 
 
 class Actor(nn.Module):

@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL import DeepDeterministicPolicyGradientAgent as DDPGAgent  # noqa
-from PyRL.utils import ReplayBuffer                                 # noqa
+from pyrl import DeepDeterministicPolicyGradientAgent as DDPGAgent  # noqa
+from pyrl.utils import ReplayBuffer                                 # noqa
 
 
 class Actor(nn.Module):

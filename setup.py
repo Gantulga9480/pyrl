@@ -8,11 +8,11 @@ setuptools.setup(
     version="0.1-dev",
     author="Gantulga G",
     author_email="limited.tulgaa@gmail.com",
-    description="Simple helper module for RL training and testing",
+    description="Pytorch implementation for RL training",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/Gantulga9480/PyRL",
-    packages=setuptools.find_packages(),
+    packages=['pyrl'],
     license='MIT',
     install_requires=['numpy'],
 )

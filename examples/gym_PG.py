@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.append(os.getcwd())
-from PyRL.reinforce import ReinforceAgent  # noqa
+from pyrl.reinforce import ReinforceAgent  # noqa
 
 
 class PG(nn.Module):
