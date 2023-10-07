@@ -43,7 +43,6 @@ np.random.seed(3407)
 
 
 ENV_NAME = "CartPole-v1"
-TRAIN_ID = "ac_rewards_norm_loss_mean_itr5"
 ENV_COUNT = 1
 envs = [gym.make(ENV_NAME, render_mode=None) for _ in range(ENV_COUNT)]
 agent = ActorCriticAgent(envs[0].observation_space.shape[0], envs[0].action_space.n, device="cuda:0")
