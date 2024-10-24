@@ -2,11 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gymnasium as gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl import DeepDeterministicPolicyGradientAgent as DDPGAgent  # noqa
-from pyrl.utils import ReplayBuffer                                 # noqa
+from pyrl import DeepDeterministicPolicyGradientAgent as DDPGAgent
+from pyrl.utils import ReplayBuffer
 
 
 class Actor(nn.Module):

@@ -2,11 +2,8 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl.dqn import DeepQNetworkAgent  # noqa
-from pyrl.utils import ReplayBuffer     # noqa
+from pyrl import DeepQNetworkAgent
+from pyrl.utils import ReplayBuffer
 
 
 class DQN(nn.Module):

@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl.one_step_actor_critic import OneStepActorCriticAgent as OSAC  # noqa
+from pyrl import OneStepActorCriticAgent as OSAC
 
 
 class Actor(nn.Module):

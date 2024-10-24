@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl.ppo import ProximalPolicyOptimizationAgent as PPO  # noqa
+from pyrl import ProximalPolicyOptimizationAgent as PPO
 
 
 class Actor(nn.Module):

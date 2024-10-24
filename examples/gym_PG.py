@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl.reinforce import ReinforceAgent  # noqa
+from pyrl import ReinforceAgent  # noqa
 
 
 class PG(nn.Module):

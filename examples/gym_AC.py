@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import gym
-import sys
-import os
-sys.path.append(os.getcwd())
-from pyrl.actor_critic import ActorCriticAgent  # noqa
+from pyrl import ActorCriticAgent
 
 
 class Actor(nn.Module):

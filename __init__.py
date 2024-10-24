@@ -3,5 +3,7 @@ from .deep_agent import DeepAgent
 from .q import QLearningAgent
 from .dqn import DeepQNetworkAgent
 from .reinforce import ReinforceAgent
+from .one_step_actor_critic import OneStepActorCriticAgent
 from .actor_critic import ActorCriticAgent
+from .ppo import ProximalPolicyOptimizationAgent
 from .ddpg import DeepDeterministicPolicyGradientAgent
