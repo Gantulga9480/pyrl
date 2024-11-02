@@ -13,6 +13,12 @@ class Agent:
         self.rewards = []
         self.reward_history = []
 
+    def train(self):
+        self.training = True
+
+    def eval(self):
+        self.training = False
+
     def create_model(self, *args, **kwargs) -> None:
         pass
 
