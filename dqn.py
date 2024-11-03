@@ -41,11 +41,14 @@ class DeepQNetworkAgent(DeepAgent):
             self.target_update_fn = self.target_update_hard
         self.reward_norm_factor = reward_norm_factor
 
-    def load_model(self, path) -> None:
-        super().load_model(path)
-        self.target_model.load_state_dict(self.model.state_dict())
-        self.target_model.to(self.device)
-        self.target_model.eval()
+    def load_model(self, path, from_jit: bool = False) -> None:
+        super().load_model(path, from_jit)
+        if from_jit:
+            self.target_model = torch.jit.load(path, map_location=self.device)
+        else:
+            self.target_model.load_state_dict(torch.load(path))
+            self.target_model.to(self.device)
+            self.target_model.eval()
 
     @torch.no_grad()
     def policy(self, state: np.ndarray):
@@ -62,17 +65,17 @@ class DeepQNetworkAgent(DeepAgent):
     def learn(self, state: np.ndarray, action: int, next_state: np.ndarray, reward: float, done: bool):
         """update: ['hard', 'soft'] = 'soft'"""
         self.buffer.push(state, action, next_state, reward, done)
+        self.rewards.append(reward)
+        if done:
+            self.decay_epsilon()
+            self.episode_counter += 1
+            self.step_counter = 0
+            self.reward_history.append(np.sum(self.rewards))
+            self.rewards.clear()
+            print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
         if self.buffer.trainable:
-            self.rewards.append(reward)
             self.update_model()
             self.target_update_fn()
-            if done:
-                self.decay_epsilon()
-                self.episode_counter += 1
-                self.step_counter = 0
-                self.reward_history.append(np.sum(self.rewards))
-                self.rewards.clear()
-                print(f"Episode: {self.episode_counter} | Train: {self.train_counter} | e: {self.e:.6f} | r: {self.reward_history[-1]:.6f}")
 
     def decay_epsilon(self):
         self.e = max(self.e_min, self.e * self.e_decay)

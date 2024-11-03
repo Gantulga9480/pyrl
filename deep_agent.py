@@ -17,18 +17,27 @@ class DeepAgent(Agent):
         self.gamma = gamma
         self.model = model(self.state_space_size, self.action_space_size)
         self.model.to(self.device)
-        self.model.train()
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
 
-    def save_model(self, path: str) -> None:
+    def save_model(self, path: str, as_jit: bool = False) -> None:
         if self.model and path:
             try:
-                torch.save(self.model.state_dict(), path)
+                if as_jit:
+                    model_scripted = torch.jit.script(self.model)
+                    model_scripted.save(path)
+                else:
+                    torch.save(self.model.state_dict(), path)
             except Exception:
                 os.makedirs("/".join(path.split("/")[:-1]))
-                torch.save(self.model.state_dict(), path)
+                if as_jit:
+                    model_scripted = torch.jit.script(self.model)
+                    model_scripted.save(path)
+                else:
+                    torch.save(self.model.state_dict(), path)
 
-    def load_model(self, path) -> None:
-        self.model.load_state_dict(torch.load(path))
-        self.model.to(self.device)
-        self.model.train()
+    def load_model(self, path, from_jit: bool = False) -> None:
+        if from_jit:
+            self.model = torch.jit.load(path, map_location=self.device)
+        else:
+            self.model.load_state_dict(torch.load(path))
+            self.model.to(self.device)
